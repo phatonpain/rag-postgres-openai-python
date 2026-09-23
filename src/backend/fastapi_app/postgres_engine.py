@@ -47,8 +47,17 @@ async def create_postgres_engine(*, host, username, database, password, sslmode,
     def update_password_token(dialect, conn_rec, cargs, cparams):
         if token_based_password:
             logger.info("Updating password token for Azure Database for PostgreSQL")
-            loop = asyncio.get_event_loop()
-            cparams["password"] = loop.run_until_complete(get_password_from_azure_credential())
+            try:
+                loop = asyncio.get_event_loop()
+                if loop.is_running():
+                    import concurrent.futures
+                    with concurrent.futures.ThreadPoolExecutor() as pool:
+                        future = pool.submit(lambda: asyncio.new_event_loop().run_until_complete(get_password_from_azure_credential()))
+                        cparams["password"] = future.result()
+                else:
+                    cparams["password"] = loop.run_until_complete(get_password_from_azure_credential())
+            except RuntimeError:
+                cparams["password"] = asyncio.new_event_loop().run_until_complete(get_password_from_azure_credential())
 
     return engine
 
