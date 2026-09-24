@@ -229,19 +229,31 @@ async def add_memory_handler(
         if len(vector) > 1024:
             vector = vector[:1024]
         
-        new_item = Item(
+        import numpy as np
+        from sqlalchemy import text
+        
+        result = await database_session.execute(
+            text(f"INSERT INTO items (type, brand, name, description, price, {context.embedding_column}) VALUES (:type, :brand, :name, :description, :price, :embedding) RETURNING id"),
+            {
+                "type": "memory",
+                "brand": "system",
+                "name": "Memory Timestamp",
+                "description": memory_request.memory_text,
+                "price": 0.0,
+                "embedding": np.array(vector)
+            }
+        )
+        await database_session.commit()
+        new_id = result.scalar()
+        
+        return ItemPublic(
+            id=new_id,
             type="memory",
             brand="system",
             name="Memory Timestamp",
             description=memory_request.memory_text,
             price=0.0
         )
-        setattr(new_item, context.embedding_column, vector)
-        
-        database_session.add(new_item)
-        await database_session.commit()
-        await database_session.refresh(new_item)
-        return ItemPublic.model_validate(new_item.to_dict())
     except Exception as e:
         import traceback
         error_msg = traceback.format_exc()
