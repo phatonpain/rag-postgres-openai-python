@@ -204,3 +204,36 @@ async def chat_stream_handler(
                 content=json.dumps({"error": str(e)}, ensure_ascii=False) + "\n",
                 media_type="application/x-ndjson",
             )
+from pydantic import BaseModel
+class MemoryRequest(BaseModel):
+    memory_text: str
+
+@router.post("/add_memory", response_model=ItemPublic)
+async def add_memory_handler(
+    context: CommonDeps,
+    database_session: DBSession,
+    openai_embed: EmbeddingsClient,
+    memory_request: MemoryRequest,
+):
+    from fastapi_app.embeddings import compute_text_embedding
+    vector = await compute_text_embedding(
+        memory_request.memory_text,
+        openai_embed.client,
+        context.openai_embed_model,
+        context.openai_embed_deployment,
+        context.openai_embed_dimensions,
+    )
+    
+    new_item = Item(
+        type=\"memory\",
+        brand=\"system\",
+        name=\"Memory Timestamp\",
+        description=memory_request.memory_text,
+        price=0.0
+    )
+    setattr(new_item, context.embedding_column, vector)
+    
+    database_session.add(new_item)
+    await database_session.commit()
+    await database_session.refresh(new_item)
+    return ItemPublic.model_validate(new_item.to_dict())

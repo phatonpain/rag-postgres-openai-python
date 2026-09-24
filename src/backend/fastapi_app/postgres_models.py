@@ -66,3 +66,31 @@ index_nomic = Index(
     postgresql_with={"m": 16, "ef_construction": 64},
     postgresql_ops={"embedding_nomic": "vector_cosine_ops"},
 )
+
+class Memory(Base):
+    __tablename__ = "memories"
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    content: Mapped[str] = mapped_column()
+    timestamp: Mapped[str] = mapped_column()
+    
+    # We will use text-embedding-3-small (1536) or text-embedding-3-large (1024 or 3072). 
+    # Let's use 1024 to match the existing Azure OpenAI deployment of embedding_3l
+    embedding: Mapped[Vector] = mapped_column(Vector(1024), nullable=True) 
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "content": self.content,
+            "timestamp": self.timestamp
+        }
+
+    def to_str_for_rag(self):
+        return f"Memory [{self.timestamp}]: {self.content}"
+
+memory_index = Index(
+    f"hnsw_index_for_cosine_memories_embedding",
+    Memory.embedding,
+    postgresql_using="hnsw",
+    postgresql_with={\"m\": 16, \"ef_construction\": 64},
+    postgresql_ops={\"embedding\": \"vector_cosine_ops\"},
+)
