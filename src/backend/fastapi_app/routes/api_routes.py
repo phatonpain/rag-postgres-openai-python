@@ -232,9 +232,15 @@ async def add_memory_handler(
         import numpy as np
         from sqlalchemy import text
         
-        result = await database_session.execute(
-            text(f"INSERT INTO items (type, brand, name, description, price, {context.embedding_column}) VALUES (:type, :brand, :name, :description, :price, :embedding) RETURNING id"),
+        # O usuário do banco configurado pelo template da Microsoft não tem permissão na Sequence (items_id_seq)
+        # Para pular essa trava de permissão, geramos o ID na mão:
+        max_id_result = await database_session.execute(text("SELECT COALESCE(MAX(id), 0) FROM items"))
+        new_id = max_id_result.scalar() + 1
+        
+        await database_session.execute(
+            text(f"INSERT INTO items (id, type, brand, name, description, price, {context.embedding_column}) VALUES (:id, :type, :brand, :name, :description, :price, :embedding)"),
             {
+                "id": new_id,
                 "type": "memory",
                 "brand": "system",
                 "name": "Memory Timestamp",
@@ -244,7 +250,6 @@ async def add_memory_handler(
             }
         )
         await database_session.commit()
-        new_id = result.scalar()
         
         return ItemPublic(
             id=new_id,
