@@ -225,6 +225,10 @@ async def add_memory_handler(
             context.openai_embed_dimensions,
         )
         
+        # Garante que o vetor tenha no máximo 1024 dimensões, para evitar erro do pgvector com ada-002
+        if len(vector) > 1024:
+            vector = vector[:1024]
+        
         new_item = Item(
             type="memory",
             brand="system",

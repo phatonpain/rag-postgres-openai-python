@@ -124,6 +124,8 @@ class PostgresSearcher:
                 self.embed_deployment,
                 self.embed_dimensions,
             )
+            if len(vector) > 1024:
+                vector = vector[:1024]
         if not enable_text_search:
             query_text = None
 
