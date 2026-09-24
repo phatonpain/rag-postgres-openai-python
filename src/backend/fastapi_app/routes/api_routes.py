@@ -225,9 +225,9 @@ async def add_memory_handler(
     )
     
     new_item = Item(
-        type=\"memory\",
-        brand=\"system\",
-        name=\"Memory Timestamp\",
+        type="memory",
+        brand="system",
+        name="Memory Timestamp",
         description=memory_request.memory_text,
         price=0.0
     )
